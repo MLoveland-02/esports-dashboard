@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESportsBattle Live Dashboard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #e0e0e0; }
+header { background: linear-gradient(135deg, #1a1a2e, #16213e); padding: 18px 28px; border-bottom: 2px solid #00d4ff; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+header h1 { color: #00d4ff; font-size: 1.6em; }
+.header-meta { font-size: 0.82em; color: #888; text-align: right; }
+.header-meta .refresh-btn { background: #00d4ff22; border: 1px solid #00d4ff44; color: #00d4ff; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9em; margin-top: 4px; display: inline-block; }
+.refresh-btn:hover { background: #00d4ff33; }
+.loading { text-align: center; padding: 60px; color: #555; font-size: 1.1em; }
+.error-box { background: #1a0a0a; border: 1px solid #ff444433; border-radius: 8px; padding: 20px; margin: 20px; color: #ff8888; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 14px 28px 0; background: #111; border-bottom: 1px solid #333; }
+.tab { padding: 9px 14px; background: #1a1a1a; border: 1px solid #333; border-bottom: none; cursor: pointer; font-size: 0.8em; color: #aaa; border-radius: 6px 6px 0 0; transition: all 0.2s; white-space: nowrap; }
+.tab:hover { background: #222; color: #fff; }
+.tab.active { background: #16213e; color: #00d4ff; border-color: #00d4ff; }
+.tab-badge { display: inline-block; background: #00d4ff22; color: #00d4ff; font-size: 0.75em; padding: 1px 5px; border-radius: 8px; margin-left: 3px; }
+.tab-badge.live { background: #ff444422; color: #ff6666; }
+.tab-badge.done { background: #44444422; color: #666; }
+.panel { display: none; padding: 22px 28px; }
+.panel.active { display: block; }
+.t-header { background: linear-gradient(135deg, #16213e, #1a1a2e); border: 1px solid #00d4ff44; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.t-title { font-size: 1.2em; color: #00d4ff; font-weight: bold; }
+.t-meta { display: flex; gap: 16px; font-size: 0.83em; color: #aaa; flex-wrap: wrap; }
+.status-live { color: #ff6666; font-weight: bold; }
+.status-done { color: #888; }
+.status-upcoming { color: #ffbb33; font-weight: bold; }
+.players-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.pcard { background: #161616; border: 1px solid #2a2a2a; border-radius: 10px; overflow: hidden; }
+.pcard:hover { border-color: #00d4ff33; }
+.pcard.r1 { border-left: 4px solid #ffd700; }
+.pcard.r2 { border-left: 4px solid #c0c0c0; }
+.pcard.r3 { border-left: 4px solid #cd7f32; }
+.pcard.r4, .pcard.r5 { border-left: 4px solid #444; }
+.pcard-head { background: #1a1a2e; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; }
+.pname { font-size: 1.05em; font-weight: bold; color: #fff; }
+.pteam { font-size: 0.78em; color: #00d4ff; margin-top: 1px; }
+.badge { padding: 3px 9px; border-radius: 16px; font-size: 0.78em; font-weight: bold; }
+.badge-gold { background: #ffd70022; color: #ffd700; }
+.badge-silver { background: #c0c0c022; color: #c0c0c0; }
+.badge-bronze { background: #cd7f3222; color: #cd7f32; }
+.badge-def { background: #00d4ff11; color: #00d4ff; }
+.badge-none { background: #22222244; color: #666; }
+.pcard-body { padding: 12px 14px; }
+.srow { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #1e1e1e; font-size: 0.83em; }
+.srow:last-child { border-bottom: none; }
+.slabel { color: #888; }
+.sval { font-weight: 500; }
+.good { color: #44ff88; }
+.avg { color: #ffbb33; }
+.poor { color: #ff6666; }
+.bar-wrap { margin: 8px 0 6px; }
+.bar-lbl { display: flex; justify-content: space-between; font-size: 0.76em; color: #777; margin-bottom: 3px; }
+.bar-track { height: 7px; background: #222; border-radius: 4px; display: flex; overflow: hidden; }
+.bw { background: #44ff88; }
+.bd { background: #ffbb33; }
+.bl { background: #ff6666; }
+.tags { margin: 6px 0; }
+.tag { display: inline-block; padding: 2px 7px; border-radius: 8px; font-size: 0.73em; margin: 2px; }
+.tag-exp { background: #00d4ff11; color: #00d4ff; }
+.tag-young { background: #44ff8811; color: #44ff88; }
+.tag-vet { background: #ffd70011; color: #ffd700; }
+.tag-hwr { background: #44ff8811; color: #44ff88; }
+.tag-lwr { background: #ff666611; color: #ff6666; }
+.tag-dk { background: #ffbb3311; color: #ffbb33; }
+.sw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.sw-box { background: #111; border-radius: 5px; padding: 8px 10px; }
+.sw-t { font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+.sw-t.g { color: #44ff88; }
+.sw-t.r { color: #ff6666; }
+.sw-item { font-size: 0.78em; color: #bbb; padding: 1px 0; }
+.sw-item::before { content: "• "; }
+.standings-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 0.85em; }
+.standings-table th { background: #16213e; color: #00d4ff; padding: 9px 10px; text-align: left; border-bottom: 1px solid #00d4ff33; }
+.standings-table td { padding: 8px 10px; border-bottom: 1px solid #1c1c1c; }
+.standings-table tr:hover td { background: #181818; }
+.pts-col { font-weight: bold; color: #00d4ff; }
+.live-box { background: #1a0a0a; border: 1px solid #ff444433; border-radius: 8px; padding: 12px 14px; margin-bottom: 18px; }
+.live-title { color: #ff6666; font-weight: bold; font-size: 0.88em; margin-bottom: 8px; }
+.res-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #2a1414; font-size: 0.82em; }
+.res-row:last-child { border-bottom: none; }
+.score { font-weight: bold; color: #fff; background: #222; padding: 1px 7px; border-radius: 3px; margin: 0 8px; }
+.ideal-box { background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px 14px; margin-top: 16px; }
+.ideal-title { font-size: 0.88em; color: #ffbb33; font-weight: bold; margin-bottom: 8px; }
+.ideal-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 5px 0; border-bottom: 1px solid #1a1a1a; font-size: 0.82em; gap: 10px; }
+.ideal-row:last-child { border-bottom: none; }
+.ideal-pick { color: #e0e0e0; flex: 1; }
+.ideal-reason { color: #ffbb33; font-size: 0.9em; text-align: right; flex: 1; }
+.no-data { color: #555; font-style: italic; font-size: 0.82em; padding: 6px 0; }
+.section-title { color: #00d4ff; font-size: 0.95em; font-weight: bold; margin: 18px 0 10px; border-bottom: 1px solid #00d4ff22; padding-bottom: 6px; }
+.last-update { font-size: 0.75em; color: #555; margin-top: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>⚽ ESportsBattle Live Dashboard</h1>
+    <div class="last-update" id="lastUpdate">Loading...</div>
+  </div>
+  <div class="header-meta">
+    <div id="dateDisplay"></div>
+    <div class="refresh-btn" onclick="loadData()">🔄 Refresh</div>
+  </div>
+</header>
+
+<div id="main-content">
+  <div class="loading" id="loading">⏳ Loading tournament data...</div>
+</div>
+
+<script>
+const DATA_URL = 'data.json?t=' + Date.now();
+let currentData = null;
+let activeTab = 0;
+
+function wr(p) {
+  const r = parseFloat(p.winRate || 0);
+  return r >= 45 ? 'good' : r >= 38 ? 'avg' : 'poor';
+}
+
+function lr(p) {
+  const r = parseFloat(p.lossRate || 0);
+  return r <= 30 ? 'good' : r <= 40 ? 'avg' : 'poor';
+}
+
+function badge(rank, total) {
+  if (rank === 1) return '<span class="badge badge-gold">🥇 #1</span>';
+  if (rank === 2) return '<span class="badge badge-silver">🥈 #2</span>';
+  if (rank === 3) return '<span class="badge badge-bronze">🥉 #3</span>';
+  return '<span class="badge badge-none">#' + rank + '</span>';
+}
+
+function tags(p) {
+  const t = [];
+  const matches = p.matches || 0;
+  const age = p.age || 0;
+  const wr = parseFloat(p.winRate || 0);
+  const dr = parseFloat(p.drawRate || 0);
+  if (matches > 15000) t.push('<span class="tag tag-exp">Elite Volume</span>');
+  else if (matches > 5000) t.push('<span class="tag tag-exp">High Volume</span>');
+  if (age > 0 && age <= 21) t.push('<span class="tag tag-young">Young (' + age + ')</span>');
+  else if (age >= 30) t.push('<span class="tag tag-vet">Veteran (' + age + ')</span>');
+  if (wr >= 50) t.push('<span class="tag tag-hwr">Elite WR ' + wr + '%</span>');
+  else if (wr >= 44) t.push('<span class="tag tag-hwr">Good WR</span>');
+  else if (wr < 34) t.push('<span class="tag tag-lwr">Low WR</span>');
+  if (dr >= 28) t.push('<span class="tag tag-dk">Draw-Prone</span>');
+  return t.join('');
+}
+
+function strengths(p) {
+  const s = [], w = [];
+  const wr = parseFloat(p.winRate || 0);
+  const lr = parseFloat(p.lossRate || 0);
+  const dr = parseFloat(p.drawRate || 0);
+  const matches = p.matches || 0;
+  const age = p.age || 0;
+
+  if (wr >= 50) s.push('Elite win rate (' + wr + '%)');
+  else if (wr >= 44) s.push('Strong win rate (' + wr + '%)');
+  if (lr <= 28) s.push('Low loss rate (' + lr + '%)');
+  if (matches > 15000) s.push('Huge match experience');
+  else if (matches > 5000) s.push('Good match volume');
+  if (age >= 30) s.push('Battle-hardened veteran');
+  if (age > 0 && age <= 22 && matches > 3000) s.push('Young but highly experienced');
+  if (dr >= 28) s.push('Strong draw resilience');
+
+  if (lr >= 45) w.push('Very high loss rate (' + lr + '%)');
+  else if (lr >= 40) w.push('High loss rate (' + lr + '%)');
+  if (wr < 34) w.push('Below-average win rate');
+  if (matches < 2000) w.push('Limited track record');
+  if (dr >= 30) w.push('Too many draws limits ceiling');
+  if (!p.matches) w.push('No data available');
+
+  if (s.length === 0) s.push('Consistent performer');
+  if (w.length === 0) w.push('No major weaknesses in data');
+
+  return {s: s.slice(0,3), w: w.slice(0,3)};
+}
+
+function playerCard(p, rank, standing, players) {
+  if (!p || p.error) {
+    return '<div class="pcard r' + rank + '">' +
+      '<div class="pcard-head"><div><div class="pname">' + (p ? p.name : 'Unknown') + '</div></div>' +
+      '<span class="badge badge-none">NO DATA</span></div>' +
+      '<div class="pcard-body"><div class="no-data">No historical stats available. Unknown quantity — watch opening matches.</div>' +
+      '<div class="sw-grid"><div class="sw-box"><div class="sw-t g">✅ Potential</div><div class="sw-item">Unknown — could surprise</div></div>' +
+      '<div class="sw-box"><div class="sw-t r">❌ Risk</div><div class="sw-item">No track record to assess</div></div></div>' +
+      '</div></div>';
+  }
+
+  const sw = strengths(p);
+  const winR = parseFloat(p.winRate || 0);
+  const drawR = parseFloat(p.drawRate || 0);
+  const lossR = parseFloat(p.lossRate || 0);
+  const country = p.country ? p.country.split(',')[0].trim() : '';
+
+  // Rank class
+  const rc = rank <= 5 ? 'r' + rank : 'r5';
+  const bdg = rank === 1 ? 'badge-gold' : rank === 2 ? 'badge-silver' : rank === 3 ? 'badge-bronze' : 'badge-none';
+  const bdgTxt = rank <= 3 ? ['🥇 #1','🥈 #2','🥉 #3'][rank-1] : '#' + rank;
+
+  // Standing data
+  const st = standing || {};
+
+  return '<div class="pcard ' + rc + '">' +
+    '<div class="pcard-head">' +
+      '<div><div class="pname">' + p.name + '</div>' +
+      (country ? '<div class="pteam">🌍 ' + country + '</div>' : '') +
+      '</div>' +
+      '<span class="badge ' + bdg + '">' + bdgTxt + '</span>' +
+    '</div>' +
+    '<div class="pcard-body">' +
+      (p.age ? '<div class="srow"><span class="slabel">Age</span><span class="sval">' + p.age + '</span></div>' : '') +
+      '<div class="srow"><span class="slabel">Career Matches</span><span class="sval">' + (p.matches||0).toLocaleString() + '</span></div>' +
+      '<div class="srow"><span class="slabel">Tournaments</span><span class="sval">' + (p.tournaments||0).toLocaleString() + '</span></div>' +
+      '<div class="srow"><span class="slabel">Win Rate</span><span class="sval ' + wr(p) + '">' + winR + '%</span></div>' +
+      '<div class="srow"><span class="slabel">Draw Rate</span><span class="sval">' + drawR + '%</span></div>' +
+      '<div class="srow"><span class="slabel">Loss Rate</span><span class="sval ' + lr(p) + '">' + lossR + '%</span></div>' +
+      (st.gp ? '<div class="srow"><span class="slabel">Today: GP/W/D/L</span><span class="sval">' + st.gp + '/' + st.w + '/' + st.d + '/' + st.l + '</span></div>' : '') +
+      (st.pts !== undefined && st.gp ? '<div class="srow"><span class="slabel">Today Points</span><span class="sval good">' + st.pts + '</span></div>' : '') +
+      '<div class="bar-wrap">' +
+        '<div class="bar-lbl"><span>W ' + winR + '%</span><span>D ' + drawR + '%</span><span>L ' + lossR + '%</span></div>' +
+        '<div class="bar-track">' +
+          '<div class="bw" style="width:' + winR + '%"></div>' +
+          '<div class="bd" style="width:' + drawR + '%"></div>' +
+          '<div class="bl" style="width:' + lossR + '%"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="tags">' + tags(p) + '</div>' +
+      '<div class="sw-grid">' +
+        '<div class="sw-box"><div class="sw-t g">✅ Strengths</div>' + sw.s.map(x => '<div class="sw-item">' + x + '</div>').join('') + '</div>' +
+        '<div class="sw-box"><div class="sw-t r">❌ Weaknesses</div>' + sw.w.map(x => '<div class="sw-item">' + x + '</div>').join('') + '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function idealMatchups(players, playerData) {
+  if (!players || players.length < 2) return '';
+  
+  const sorted = players
+    .map((name, i) => ({ name, data: playerData[name] }))
+    .filter(p => p.data && !p.data.error)
+    .sort((a, b) => parseFloat(b.data.winRate||0) - parseFloat(a.data.winRate||0));
+
+  if (sorted.length < 2) return '<div class="no-data">Insufficient data for matchup analysis.</div>';
+
+  const best = sorted[0];
+  const worst = sorted[sorted.length - 1];
+  const mid = sorted[Math.floor(sorted.length / 2)];
+
+  let html = '';
+  html += '<div class="ideal-row"><span class="ideal-pick"><strong>' + best.name + '</strong> — TOP PICK</span><span class="ideal-reason">Highest WR (' + best.data.winRate + '%) — back to win group</span></div>';
+  
+  if (sorted.length >= 2) {
+    const second = sorted[1];
+    html += '<div class="ideal-row"><span class="ideal-pick"><strong>' + best.name + '</strong> vs <strong>' + worst.name + '</strong> — Back ' + best.name + '</span><span class="ideal-reason">' + best.data.winRate + '% vs ' + worst.data.winRate + '% WR — clear edge</span></div>';
+  }
+  
+  if (worst.data.lossRate && parseFloat(worst.data.lossRate) > 42) {
+    html += '<div class="ideal-row"><span class="ideal-pick"><strong>' + worst.name + '</strong> — AVOID</span><span class="ideal-reason">Highest loss rate (' + worst.data.lossRate + '%) — unfavourable profile</span></div>';
+  }
+
+  if (sorted.length >= 3) {
+    const darkHorse = sorted.find(p => p.matches < 3000 && parseFloat(p.data.winRate||0) >= 40);
+    if (darkHorse) {
+      html += '<div class="ideal-row"><span class="ideal-pick"><strong>' + darkHorse.name + '</strong> — DARK HORSE</span><span class="ideal-reason">Good WR but small sample — could over or underperform</span></div>';
+    }
+  }
+
+  return html;
+}
+
+function buildTournamentPanel(t, playerData, index) {
+  const players = t.players || [];
+  const standings = t.standings || [];
+  
+  const statusClass = t.status === 'Finished' ? 'status-done' :
+                      t.status === 'Started' ? 'status-live' : 'status-upcoming';
+  const statusText = t.status === 'Finished' ? '✓ FINISHED' :
+                     t.status === 'Started' ? '● LIVE' : '⏳ UPCOMING';
+
+  let html = '<div id="panel-' + index + '" class="panel' + (index === 0 ? ' active' : '') + '">';
+  
+  html += '<div class="t-header"><div>' +
+    '<div class="t-title">🏆 ' + (t.leagueName || t.name || 'Tournament') + (t.group ? ' — ' + t.group : '') + '</div>' +
+    '<div class="t-meta">' +
+      (t.venue ? '<span>🏟️ ' + t.venue + '</span>' : '') +
+      (t.time ? '<span>🕐 ' + t.time + '</span>' : '') +
+      '<span class="' + statusClass + '">' + statusText + '</span>' +
+    '</div></div></div>';
+
+  // Standings table if data available
+  if (standings.length > 0 && players.length > 0) {
+    html += '<div class="section-title">📋 Standings</div>';
+    html += '<table class="standings-table"><thead><tr><th>#</th><th>Player</th><th>GP</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th class="pts-col">PTS</th></tr></thead><tbody>';
+    standings.forEach((s, i) => {
+      const pname = players[i] || '-';
+      const gd = (s.gf - s.ga);
+      html += '<tr><td>' + (i+1) + '</td><td><strong>' + pname + '</strong></td><td>' + s.gp + '</td><td>' + s.w + '</td><td>' + s.d + '</td><td>' + s.l + '</td><td>' + s.gf + '</td><td>' + s.ga + '</td><td>' + (gd >= 0 ? '+' : '') + gd + '</td><td class="pts-col">' + s.pts + '</td></tr>';
+    });
+    html += '</tbody></table>';
+  }
+
+  // Match results
+  if (t.matches && t.matches.length > 0) {
+    html += '<div class="live-box"><div class="live-title">📊 Match Results</div>';
+    t.matches.slice(0, 8).forEach(m => {
+      html += '<div class="res-row"><span>' + m.home + '</span><span class="score">' + m.hs + ' - ' + m.as + '</span><span>' + m.away + '</span></div>';
+    });
+    html += '</div>';
+  }
+
+  // Player cards
+  html += '<div class="section-title">👤 Player Profiles</div>';
+  html += '<div class="players-grid">';
+  players.slice(0, 8).forEach((pname, i) => {
+    const pdata = playerData[pname];
+    const standing = standings[i];
+    html += playerCard(pdata || { name: pname, error: true }, i + 1, standing, players);
+  });
+  html += '</div>';
+
+  // Ideal matchups
+  html += '<div class="ideal-box"><div class="ideal-title">🎯 Matchup Analysis</div>';
+  html += idealMatchups(players.slice(0, 8), playerData);
+  html += '</div>';
+
+  html += '</div>'; // end panel
+  return html;
+}
+
+function buildDashboard(data) {
+  const tournaments = (data.tournaments || []).sort((a, b) => {
+    const ta = a.time || '99:99';
+    const tb = b.time || '99:99';
+    return ta.localeCompare(tb);
+  });
+  const playerData = data.players || {};
+
+  // Update header
+  document.getElementById('lastUpdate').textContent = 'Last updated: ' + new Date(data.fetchedAt || Date.now()).toLocaleTimeString();
+  document.getElementById('dateDisplay').textContent = 'Date: ' + (data.date || new Date().toLocaleDateString());
+
+  if (tournaments.length === 0) {
+    document.getElementById('main-content').innerHTML = '<div class="error-box">No tournament data found for today. The scraper may not have run yet. Try refreshing in a few minutes.</div>';
+    return;
+  }
+
+  // Build tabs
+  let tabsHtml = '<div class="tabs">';
+  tournaments.forEach((t, i) => {
+    const statusBadge = t.status === 'Finished' ? 'done' : t.status === 'Started' ? 'live' : '';
+    const badgeText = t.status === 'Finished' ? '✓' : t.status === 'Started' ? 'LIVE' : (t.time || '');
+    tabsHtml += '<div class="tab' + (i === 0 ? ' active' : '') + '" onclick="switchTab(' + i + ', this)">' +
+      (t.leagueName || t.name || 'T' + (i+1)) +
+      (badgeText ? ' <span class="tab-badge ' + statusBadge + '">' + badgeText + '</span>' : '') +
+      '</div>';
+  });
+  tabsHtml += '</div>';
+
+  // Build panels
+  let panelsHtml = '';
+  tournaments.forEach((t, i) => {
+    panelsHtml += buildTournamentPanel(t, playerData, i);
+  });
+
+  document.getElementById('main-content').innerHTML = tabsHtml + panelsHtml;
+}
+
+function switchTab(index, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const panel = document.getElementById('panel-' + index);
+  if (panel) panel.classList.add('active');
+  if (el) el.classList.add('active');
+  activeTab = index;
+}
+
+async function loadData() {
+  document.getElementById('loading') && (document.getElementById('loading').style.display = 'block');
+  try {
+    const res = await fetch('data.json?t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    currentData = data;
+    buildDashboard(data);
+  } catch(e) {
+    document.getElementById('main-content').innerHTML =
+      '<div class="error-box">' +
+      '<strong>Could not load data.json</strong><br><br>' +
+      'The scraper has not run yet, or this is the first time loading.<br>' +
+      'Please wait up to 30 minutes for the GitHub Action to run the scraper and generate data.<br><br>' +
+      'Error: ' + e.message +
+      '</div>';
+  }
+}
+
+// Auto-refresh every 5 minutes
+setInterval(() => loadData(), 5 * 60 * 1000);
+
+// Load on start
+loadData();
+</script>
+</body>
+</html>
